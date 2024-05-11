@@ -1,3 +1,4 @@
+import express from "express";
 import puppeteer from "puppeteer";
 import "dotenv/config";
 import { validLocations } from "./constants.js";
@@ -8,10 +9,16 @@ import {
   clickButtonByLocation,
 } from "./helpers.js";
 
+const app = express();
+
+const PORT = process.env.PORT || 8080;
 const maxAttempts = 3;
 
-const clockIn = async () => {
-  const browser = await puppeteer.launch({ headless: false, devtools: true });
+app.get("/clockin", async (req, res) => {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
   const context = browser.defaultBrowserContext();
 
   // 允許網站使用位置資訊
@@ -57,13 +64,18 @@ const clockIn = async () => {
     if (buttonLocation) {
       clickButtonByLocation(page, buttonLocation, maxAttempts);
     } else {
-      console.log("Element not found.");
+      res.status(500).send("Element not found.");
     }
+
+    res.send("Clock-in process completed successfully.");
   } catch (error) {
     console.error(error);
+    res.status(500).send("Error during the clock-in process.");
   } finally {
-    // await browser.close();
+    await browser.close();
   }
-};
+});
 
-clockIn();
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
