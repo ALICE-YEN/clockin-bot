@@ -41,7 +41,7 @@ const clickButtonByText = async (page, buttonText) => {
 };
 
 const clockIn = async () => {
-  const browser = await puppeteer.launch({ headless: false, devtools: true });
+  const browser = await puppeteer.launch({ headless: false, devtools: false });
   const context = browser.defaultBrowserContext();
 
   // 允許網站使用位置資訊
@@ -82,7 +82,7 @@ const clockIn = async () => {
   } catch (error) {
     console.error(error);
   } finally {
-    await browser.close();
+    // await browser.close();
   }
 };
 
