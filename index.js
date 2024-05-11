@@ -1,47 +1,17 @@
-const puppeteer = require("puppeteer");
-require("dotenv").config();
+import puppeteer from "puppeteer";
+import "dotenv/config";
+import { validLocations } from "./constants.js";
+import {
+  delay,
+  getRandomLocation,
+  getButtonLocationByText,
+  clickButtonByLocation,
+} from "./helpers.js";
 
 const maxAttempts = 3;
 
-const delay = async (time) => {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, time);
-  });
-};
-
-const clickButtonByText = async (page, buttonText) => {
-  // 尋找按鈕位置
-  const location = await page.evaluate(async (text) => {
-    const elements = Array.from(document.querySelectorAll("button"));
-    const targetElement = elements.find((el) => el.textContent.includes(text));
-
-    // 確保按鈕可見
-    await targetElement.scrollIntoView();
-
-    if (targetElement) {
-      const rect = targetElement.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    }
-    return null;
-  }, buttonText);
-
-  // 點擊按鈕
-  if (location) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      console.log(`Click attempt ${attempt}`);
-      await page.mouse.click(location.x, location.y);
-      await delay(500);
-      // 目前沒有做檢查是否打卡成功
-    }
-    return true;
-  } else {
-    console.log("Element not found.");
-    return false;
-  }
-};
-
 const clockIn = async () => {
-  const browser = await puppeteer.launch({ headless: false, devtools: false });
+  const browser = await puppeteer.launch({ headless: false, devtools: true });
   const context = browser.defaultBrowserContext();
 
   // 允許網站使用位置資訊
@@ -56,9 +26,10 @@ const clockIn = async () => {
     console.log("進入登入頁面");
 
     // 更改網站使用位置資訊
+    const randomLocation = getRandomLocation(validLocations);
     await page.setGeolocation({
-      latitude: Number(process.env.LATITUDE),
-      longitude: Number(process.env.LONGITUDE),
+      latitude: randomLocation.latitude,
+      longitude: randomLocation.longitude,
       accuracy: 50,
     });
 
@@ -78,7 +49,16 @@ const clockIn = async () => {
     await delay(2000);
     console.log("等兩秒鐘");
 
-    clickButtonByText(page, process.env.ACTION_TEXT);
+    const buttonLocation = await getButtonLocationByText(
+      page,
+      process.env.ACTION_TEXT
+    );
+
+    if (buttonLocation) {
+      clickButtonByLocation(page, buttonLocation, maxAttempts);
+    } else {
+      console.log("Element not found.");
+    }
   } catch (error) {
     console.error(error);
   } finally {
